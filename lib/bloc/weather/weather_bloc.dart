@@ -76,6 +76,8 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
       add(FetchLocation());
     }
     if (event is FetchCurrentLocation) {
+      yield WeatherLoading();
+
       currentLocationData = await fetchLocation();
       if (currentLocationData['success']) {
         print(currentLocationData);
@@ -87,7 +89,6 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
           'lng': longitude.toString()
         };
         try {
-          yield WeatherLoading();
           var response = await API().getWeather(locationData);
 
           var weatherData = await processDataHelper(response);
@@ -103,6 +104,9 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
             'weatherData': weatherData
           });
 //        print(locations[selectedIndex]);
+
+          selectedIndex = 0;
+
           add(SelectForecastDay(
               keyDate: weatherData['weather'].keys.toList()[0]));
           yield WeatherLoaded();
