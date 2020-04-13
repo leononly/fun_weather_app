@@ -206,8 +206,14 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
     // persist locations data into local storage/ cache
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    var locationCopy = [...locations];
+
+    if (locations[selectedIndex]['currentLocationFlag'] != null)
+      locationCopy.removeAt(0);
+
     Future<bool> storeLocationList =
-        prefs.setString("locationList", json.encode(locations));
+        prefs.setString("locationList", json.encode(locationCopy));
 
     Future<bool> storeLocationListToAdd =
         prefs.setString('locationListToAdd', json.encode(locationListToAdd));
