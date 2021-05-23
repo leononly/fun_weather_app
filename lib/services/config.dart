@@ -1,4 +1,4 @@
-class Constants {
+class Config {
   static String apiKey = '4a67b5fd552af105428d55761431d885';
 
   static List allLocationList = [

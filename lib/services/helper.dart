@@ -1,208 +1,14 @@
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:location/location.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:weather/bloc/weather/constants.dart';
-import 'package:weather/services/api.dart';
 import 'package:weather_icons/weather_icons.dart';
 
-import './bloc.dart';
-
-class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
-  @override
-  WeatherState get initialState => InitialWeatherState();
-
-  List<Map<dynamic, dynamic>> locations = [
-    {
-      "city": "Kuala Lumpur",
-      "admin": "Kuala Lumpur ",
-      "country": "Malaysia",
-      "population_proper": "1448000",
-      "iso2": "MY",
-      "capital": "primary",
-      "lat": "3.166667",
-      "lng": "101.7",
-      "population": "1448000",
-    },
-    {
-      "city": "George Town",
-      "admin": "Pulau Pinang",
-      "country": "Malaysia",
-      "population_proper": "720202",
-      "iso2": "MY",
-      "capital": "admin",
-      "lat": "5.411229",
-      "lng": "100.335426",
-      "population": "2500000",
-    },
-    {
-      "city": "Johor Bahru",
-      "admin": "Johor",
-      "country": "Malaysia",
-      "population_proper": "802489",
-      "iso2": "MY",
-      "capital": "admin",
-      "lat": "1.4655",
-      "lng": "103.7578",
-      "population": "875000",
-    },
-  ];
-
-  List locationListToAdd;
-
-  Map<String, dynamic> currentLocationData;
-  int selectedIndex = 0;
-  Map forecastDaySelected;
-
-  @override
-  Stream<WeatherState> mapEventToState(
-    WeatherEvent event,
-  ) async* {
-    if (event is AppStart) {
-      var cache = await getFromCache();
-
-      if (cache != null) {
-        locations = [...cache['locationList']];
-
-        locationListToAdd = [...cache['locationListToAdd']];
-      } else {
-        locationListToAdd = Constants.allLocationList;
-      }
-
-      add(FetchLocation());
-    }
-    if (event is FetchCurrentLocation) {
-      yield WeatherLoading();
-
-      currentLocationData = await fetchLocation();
-      if (currentLocationData['success']) {
-        print(currentLocationData);
-        var latitude = currentLocationData['data'].latitude;
-        var longitude = currentLocationData['data'].longitude;
-
-        var locationData = {
-          'lat': latitude.toString(),
-          'lng': longitude.toString()
-        };
-        try {
-          var response = await API().getWeather(locationData);
-
-          var weatherData = await processDataHelper(response);
-
-          if (locations[0]['currentLocationFlag'] != null) {
-            locations.removeAt(0);
-          }
-          locations.insert(0, {
-            'city': 'Current Location',
-            'admin': weatherData['city']['name'],
-            'country': weatherData['city']['country'],
-            'currentLocationFlag': true,
-            'weatherData': weatherData
-          });
-//        print(locations[selectedIndex]);
-
-          selectedIndex = 0;
-
-          add(SelectForecastDay(
-              keyDate: weatherData['weather'].keys.toList()[0]));
-          yield WeatherLoaded();
-        } catch (error) {
-          print(error.toString());
-
-          if (error == 'NetworkError') {
-            yield WeatherNetworkError();
-          } else {
-            yield WeatherError(error: error.toString());
-          }
-        }
-      } else {
-        yield InitialWeatherState();
-        yield WeatherError(
-            error:
-                "Please enable Location Permission to get current location.");
-      }
-    }
-
-    if (event is FetchLocation) {
-      var locationData = locations[selectedIndex];
-      try {
-        yield WeatherLoading();
-        var response = await API().getWeather(locationData);
-
-        var weatherData = await processDataHelper(response);
-
-        if (locations[0]['currentLocationFlag'] != null) {
-          locations.removeAt(0);
-          selectedIndex -= 1;
-        }
-
-        locations[selectedIndex] = {
-          ...locations[selectedIndex],
-          'weatherData': weatherData
-        };
-
-//        print(locations[selectedIndex]);
-        add(SelectForecastDay(
-            keyDate: weatherData['weather'].keys.toList()[0]));
-        yield WeatherLoaded();
-      } catch (error) {
-        print(error.toString());
-        if (error == 'NetworkError') {
-          yield WeatherNetworkError();
-        } else {
-          yield WeatherError(error: error.toString());
-        }
-      }
-    }
-
-    if (event is SelectAndFetchWeather) {
-      int index = event.index;
-
-      selectedIndex = index;
-
-      add(FetchLocation());
-    }
-
-    if (event is SelectForecastDay) {
-      String keyDate = event.keyDate;
-
-      yield InitialWeatherState();
-
-      forecastDaySelected = {
-        keyDate: locations[selectedIndex]['weatherData']['weather'][keyDate]
-      };
-
-      yield WeatherLoaded();
-    }
-
-    if (event is AddNewLocation) {
-      int index = event.index;
-      var locationCopy = locationListToAdd[index];
-
-      yield InitialWeatherState();
-
-      locations.add(locationCopy);
-      locationListToAdd.removeAt(index);
-
-      persistData();
-
-      yield WeatherLoaded();
-    }
-
-    if (event is RefreshData) {
-      if (locations[0]['currentLocationFlag'] != null) {
-        add(FetchCurrentLocation());
-      } else {
-        add(FetchLocation());
-      }
-    }
-  }
-
-  persistData() async {
+class Helper {
+  static persistData(List<Map<dynamic, dynamic>> locations, int selectedIndex,
+      List locationListToAdd) async {
     // persist locations data into local storage/ cache
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -212,16 +18,14 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
     if (locations[selectedIndex]['currentLocationFlag'] != null)
       locationCopy.removeAt(0);
 
-    Future<bool> storeLocationList =
-        prefs.setString("locationList", json.encode(locationCopy));
+    prefs.setString("locationList", json.encode(locationCopy));
 
-    Future<bool> storeLocationListToAdd =
-        prefs.setString('locationListToAdd', json.encode(locationListToAdd));
+    prefs.setString('locationListToAdd', json.encode(locationListToAdd));
 
     return;
   }
 
-  getFromCache() async {
+  static getFromCache() async {
     // get cache
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String locationListString = prefs.getString("locationList");
@@ -237,7 +41,7 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
     }
   }
 
-  fetchLocation() async {
+  static fetchLocationService() async {
     Location location = new Location();
 
     bool _serviceEnabled;
@@ -262,6 +66,7 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
         return {'success': false};
       }
     }
+
     try {
       var _locationData = await location.getLocation();
       print(_locationData.latitude);
@@ -274,7 +79,7 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
     }
   }
 
-  processDataHelper(inputData) async {
+  static processDataHelper(inputData) async {
     Map<String, dynamic> finalData;
     DateTime datetime;
     List list = inputData['list'];
@@ -338,7 +143,7 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
     return {'city': inputData['city'], 'weather': finalData};
   }
 
-  bool isYesterdayCheckHelper(DateTime date) {
+  static bool isYesterdayCheckHelper(DateTime date) {
     // to check if is yesterday
     var now = DateTime.now();
     var today = DateTime(now.year, now.month, now.day);
@@ -350,12 +155,12 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
     }
   }
 
-  double convertKelvinToCelciusHelper(kelvinInput) {
+  static double convertKelvinToCelciusHelper(kelvinInput) {
     //formula for convert kelvin to celcius
     return kelvinInput - 273.15;
   }
 
-  String todayOrTomorrowHelper(date) {
+  static String todayOrTomorrowHelper(date) {
     var now = DateTime.now();
     var today = DateTime(now.year, now.month, now.day);
     var tomorrow = DateTime(now.year, now.month, now.day + 1);
@@ -373,7 +178,7 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
     }
   }
 
-  Map identifyWeatherIcon(String iconId) {
+  static Map identifyWeatherIcon(String iconId) {
 //    var identifier = id.substring(0, 1);
 
     switch (iconId) {

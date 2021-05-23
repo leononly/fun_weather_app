@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:weather/bloc/weatherCubit/weather_cubit.dart';
+import 'package:weather/services/helper.dart';
 import 'package:weather_icons/weather_icons.dart';
 
-import '../bloc/weather/bloc.dart';
+// import '../bloc/weather/bloc.dart';
 import 'CitiesScreen.dart';
 
 class HomeScren extends StatefulWidget {
@@ -15,29 +17,33 @@ class _MyHomePageState extends State<HomeScren>
   GlobalKey<AnimatedListState> listKey = GlobalKey<AnimatedListState>();
   GlobalKey<ScaffoldState> _key = new GlobalKey<ScaffoldState>();
 
-  WeatherBloc weatherBloc;
+  // weatherCubit weatherCubit;
+  WeatherCubit weatherCubit;
 
   TabController _tabController;
+
+  ScrollController scrollController = ScrollController();
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
 
-    weatherBloc = BlocProvider.of<WeatherBloc>(context);
+    // weatherCubit = BlocProvider.of<weatherCubit>(context);
+    weatherCubit = BlocProvider.of<WeatherCubit>(context);
 
-//    weatherBloc.add(FetchLocation());
+//    weatherCubit.add(FetchLocation());
 
-    weatherBloc.add(AppStart());
+    weatherCubit.appStart();
+    // weatherCubit.add(AppStart());
 
     _tabController = TabController(initialIndex: 0, length: 2, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
-    Size media = MediaQuery.of(context).size;
     return BlocBuilder(
-      bloc: weatherBloc,
+      bloc: weatherCubit,
       builder: (context, state) => Scaffold(
         key: _key,
         appBar: AppBar(
@@ -57,40 +63,42 @@ class _MyHomePageState extends State<HomeScren>
           title: Column(
             children: <Widget>[
               Text(
-                  '${weatherBloc.locations[weatherBloc.selectedIndex]['city']}'),
-              if (weatherBloc.locations[weatherBloc.selectedIndex]
+                  '${weatherCubit.locations[weatherCubit.selectedIndex]['city']}'),
+              if (weatherCubit.locations[weatherCubit.selectedIndex]
                       ['currentLocationFlag'] !=
                   null)
                 Text(
-                  weatherBloc.locations[weatherBloc.selectedIndex]['admin'],
+                  weatherCubit.locations[weatherCubit.selectedIndex]['admin'],
                   style: TextStyle(fontSize: 12),
                 ),
             ],
           ),
-          leading: FlatButton(
+          leading: TextButton(
               child: Icon(
                 Icons.refresh,
                 color: Theme.of(context).accentColor,
               ),
               onPressed: () {
                 _tabController.animateTo(0);
-                weatherBloc.add(RefreshData());
+                weatherCubit.refreshData();
               }),
           actions: <Widget>[
-            FlatButton(
+            TextButton(
               child: Icon(
                 Icons.my_location,
                 color: Theme.of(context).accentColor,
               ),
               onPressed: () {
                 _tabController.animateTo(0);
-                weatherBloc.add(FetchCurrentLocation());
+                Future.delayed(Duration(milliseconds: 300), () {
+                  weatherCubit.fetchCurrentLocation();
+                });
               },
             ),
           ],
         ),
         body: BlocListener(
-          bloc: weatherBloc,
+          bloc: weatherCubit,
           listener: (ctx, state) {
             if (state is WeatherError) {
               final snackBar = SnackBar(
@@ -101,20 +109,19 @@ class _MyHomePageState extends State<HomeScren>
                         topLeft: Radius.circular(15),
                         topRight: Radius.circular(15))),
               );
-
-              Scaffold.of(ctx).hideCurrentSnackBar();
-              Scaffold.of(ctx).showSnackBar(snackBar);
+              ScaffoldMessenger.of(ctx).hideCurrentSnackBar();
+              ScaffoldMessenger.of(ctx).showSnackBar(snackBar);
             }
           },
           child: TabBarView(
               controller: _tabController,
-              children: [firstTab(state), secondTab(state)]),
+              children: [firstTab(state, scrollController), secondTab(state)]),
         ),
       ),
     );
   }
 
-  Widget firstTab(WeatherState state) {
+  Widget firstTab(WeatherState state, ScrollController scrollController) {
     Size media = MediaQuery.of(context).size;
 
     return Container(
@@ -174,31 +181,30 @@ class _MyHomePageState extends State<HomeScren>
                                             MainAxisAlignment.spaceBetween,
                                         children: <Widget>[
                                           Container(
-                                              child: weatherBloc.locations[
-                                                              weatherBloc
+                                              child: weatherCubit.locations[
+                                                              weatherCubit
                                                                   .selectedIndex]
                                                           ['weatherData'] !=
                                                       null
                                                   ? BoxedIcon(
-                                                      weatherBloc.identifyWeatherIcon(
-                                                          weatherBloc
+                                                      Helper.identifyWeatherIcon(
+                                                          weatherCubit
                                                               .locations[
-                                                                  weatherBloc
+                                                                  weatherCubit
                                                                       .selectedIndex]
                                                                   [
                                                                   'weatherData']
                                                                   ['weather']
                                                               .values
-                                                              .toList()[0]
-                                                                  [
+                                                              .toList()[0][
                                                                   'weatherList']
                                                                   [0]['weather']
                                                                   ['icon']
                                                               .toString())['icon'],
-                                                      color: weatherBloc
-                                                          .identifyWeatherIcon(weatherBloc
+                                                      color: Helper.identifyWeatherIcon(
+                                                          weatherCubit
                                                               .locations[
-                                                                  weatherBloc
+                                                                  weatherCubit
                                                                       .selectedIndex]
                                                                   ['weatherData']
                                                                   ['weather']
@@ -220,11 +226,11 @@ class _MyHomePageState extends State<HomeScren>
                                                     )),
                                           Container(
                                             child: Text(
-                                              weatherBloc.locations[weatherBloc
+                                              weatherCubit.locations[weatherCubit
                                                               .selectedIndex]
                                                           ['weatherData'] !=
                                                       null
-                                                  ? '${weatherBloc.locations[weatherBloc.selectedIndex]['weatherData']['weather'].values.toList()[0]['weatherList'][0]['celcius'].toStringAsFixed(1)}\u02DAC'
+                                                  ? '${weatherCubit.locations[weatherCubit.selectedIndex]['weatherData']['weather'].values.toList()[0]['weatherList'][0]['celcius'].toStringAsFixed(1)}\u02DAC'
                                                   : '--\u02DAC',
                                               style: TextStyle(
                                                   color: Colors.white,
@@ -237,11 +243,11 @@ class _MyHomePageState extends State<HomeScren>
                                     Container(
                                       padding: EdgeInsets.only(top: 5),
                                       child: Text(
-                                        weatherBloc.locations[weatherBloc
+                                        weatherCubit.locations[weatherCubit
                                                         .selectedIndex]
                                                     ['weatherData'] !=
                                                 null
-                                            ? '${weatherBloc.locations[weatherBloc.selectedIndex]['weatherData']['weather'].values.toList()[0]['weatherList'][0]['weather']['main']}'
+                                            ? '${weatherCubit.locations[weatherCubit.selectedIndex]['weatherData']['weather'].values.toList()[0]['weatherList'][0]['weather']['main']}'
                                             : '--',
                                         style: TextStyle(
                                             color: Colors.white, fontSize: 20),
@@ -263,38 +269,49 @@ class _MyHomePageState extends State<HomeScren>
                             scrollDirection: Axis.horizontal,
                             itemExtent: 100,
                             children: <Widget>[
-                              if (weatherBloc
-                                          .locations[weatherBloc.selectedIndex]
+                              if (weatherCubit
+                                          .locations[weatherCubit.selectedIndex]
                                       ['weatherData'] !=
                                   null)
-                                ...weatherBloc
-                                    .locations[weatherBloc.selectedIndex]
+                                ...weatherCubit
+                                    .locations[weatherCubit.selectedIndex]
                                         ['weatherData']['weather']
                                     .map((key, data) => MapEntry(
                                         key,
-                                        GestureDetector(
-                                          onTap: () {
-                                            weatherBloc.add(SelectForecastDay(
-                                                keyDate: key));
+                                        TextButton(
+                                          onPressed: () {
+                                            scrollController.animateTo(
+                                                scrollController
+                                                    .position.minScrollExtent,
+                                                duration:
+                                                    Duration(milliseconds: 500),
+                                                curve: Curves.fastOutSlowIn);
+
+                                            weatherCubit.selectForecastDay(key);
                                           },
+                                          style: ButtonStyle(
+                                              padding:
+                                                  MaterialStateProperty.all(
+                                                      EdgeInsets.only(
+                                                          bottom: 10))),
                                           child: Container(
                                             alignment: Alignment.topCenter,
                                             child: Text(
                                               data['day'],
                                               style: TextStyle(
-                                                  color: weatherBloc
+                                                  color: weatherCubit
                                                                   .forecastDaySelected !=
                                                               null &&
-                                                          weatherBloc
+                                                          weatherCubit
                                                               .forecastDaySelected
                                                               .containsKey(key)
                                                       ? Theme.of(context)
                                                           .accentColor
                                                       : Color(0xFF2353a1),
-                                                  fontSize: weatherBloc
+                                                  fontSize: weatherCubit
                                                                   .forecastDaySelected !=
                                                               null &&
-                                                          weatherBloc
+                                                          weatherCubit
                                                               .forecastDaySelected
                                                               .containsKey(key)
                                                       ? 20
@@ -334,10 +351,11 @@ class _MyHomePageState extends State<HomeScren>
                             padding: EdgeInsets.symmetric(vertical: 10),
                             child: ListView(
                               itemExtent: 90,
+                              controller: scrollController,
                               scrollDirection: Axis.horizontal,
                               children: [
-                                if (weatherBloc.forecastDaySelected != null)
-                                  ...weatherBloc.forecastDaySelected.values
+                                if (weatherCubit.forecastDaySelected != null)
+                                  ...weatherCubit.forecastDaySelected.values
                                       .toList()[0]['weatherList']
                                       .map((data) => Container(
                                             margin: EdgeInsets.only(right: 10),
@@ -357,11 +375,10 @@ class _MyHomePageState extends State<HomeScren>
                                                           .accentColor),
                                                 ),
                                                 BoxedIcon(
-                                                  weatherBloc
-                                                      .identifyWeatherIcon(data[
-                                                              'weather']['icon']
+                                                  Helper.identifyWeatherIcon(
+                                                      data['weather']['icon']
                                                           .toString())['icon'],
-                                                  color: weatherBloc
+                                                  color: Helper
                                                       .identifyWeatherIcon(data[
                                                               'weather']['icon']
                                                           .toString())['color'],
@@ -404,17 +421,17 @@ class _MyHomePageState extends State<HomeScren>
             Expanded(
                 child: ListView(
               children: <Widget>[
-                ...weatherBloc.locations
+                ...weatherCubit.locations
                     .asMap()
                     .map((i, data) => MapEntry(
                         i,
                         ListTile(
                           onTap: () {
                             _tabController.animateTo(0);
-                            weatherBloc.add(SelectAndFetchWeather(index: i));
+                            weatherCubit.selectAndFetchWeather(i);
                           },
                           selected:
-                              i == weatherBloc.selectedIndex ? true : false,
+                              i == weatherCubit.selectedIndex ? true : false,
                           title: Text(data['city']),
                           subtitle: Text(data['admin'] != null
                               ? '${data['admin']}, ${data['country']}'
@@ -430,14 +447,18 @@ class _MyHomePageState extends State<HomeScren>
             Container(
               width: media.width,
               margin: EdgeInsets.all(5),
-              child: RaisedButton(
-                color: Colors.blueAccent,
+              child: ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => CitiesScreen()));
                 },
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15)),
+                style: ButtonStyle(
+                    backgroundColor:
+                        MaterialStateProperty.all<Color>(Colors.blueAccent),
+                    shape: MaterialStateProperty.all<OutlinedBorder>(
+                      RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                    )),
                 child: Text(
                   'Add City',
                   style: TextStyle(color: Theme.of(context).accentColor),

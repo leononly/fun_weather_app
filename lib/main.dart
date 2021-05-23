@@ -2,11 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:weather/bloc/weather/bloc.dart';
+import 'package:weather/bloc/weatherCubit/weather_cubit.dart';
 import 'package:weather/screens/CitiesScreen.dart';
 import 'package:weather/screens/HomeScreen.dart';
 
-class SimpleBlocDelegate extends BlocDelegate {
+class SimpleBlocObserver extends BlocObserver {
   @override
   void onEvent(Bloc bloc, Object event) {
     super.onEvent(bloc, event);
@@ -20,16 +20,16 @@ class SimpleBlocDelegate extends BlocDelegate {
   }
 
   @override
-  void onError(Bloc bloc, Object error, StackTrace stacktrace) {
-    super.onError(bloc, error, stacktrace);
+  void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
     print(error);
+    super.onError(bloc, error, stackTrace);
   }
 }
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  BlocSupervisor.delegate = SimpleBlocDelegate();
+  Bloc.observer = SimpleBlocObserver();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp])
       .then((_) {
     runApp(MyApp());
@@ -42,20 +42,22 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  WeatherBloc weatherBloc;
+  // WeatherBloc weatherBloc;
+  WeatherCubit weatherCubit;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
 
-    weatherBloc = WeatherBloc();
+    // weatherBloc = WeatherBloc();
+    weatherCubit = WeatherCubit();
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (BuildContext context) => weatherBloc,
+      create: (BuildContext context) => weatherCubit,
       child: MaterialApp(
           title: 'Fun Weather App',
           theme: ThemeData(

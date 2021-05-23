@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:weather/bloc/weather/bloc.dart';
+import 'package:weather/bloc/weatherCubit/weather_cubit.dart';
 
 class CitiesScreen extends StatefulWidget {
   @override
@@ -8,14 +8,16 @@ class CitiesScreen extends StatefulWidget {
 }
 
 class _CitiesScreenState extends State<CitiesScreen> {
-  WeatherBloc weatherBloc;
-
+  // WeatherBloc weatherBloc;
+  WeatherCubit weatherCubit;
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
 
-    weatherBloc = BlocProvider.of<WeatherBloc>(context);
+    // weatherBloc = BlocProvider.of<WeatherBloc>(context);
+
+    weatherCubit = BlocProvider.of<WeatherCubit>(context);
   }
 
   @override
@@ -28,14 +30,14 @@ class _CitiesScreenState extends State<CitiesScreen> {
       body: Container(
           child: ListView(
         children: <Widget>[
-          ...weatherBloc.locationListToAdd
+          ...weatherCubit.locationListToAdd
               .asMap()
               .map((index, data) => MapEntry(
                   index,
                   ListTile(
                     onTap: () {
                       Navigator.of(context).pop();
-                      weatherBloc.add(AddNewLocation(index: index));
+                      weatherCubit.addNewLocation(index);
                     },
                     title: Text(data['city']),
                     subtitle: Text('${data['admin']}, ${data['country']}'),
