@@ -6,7 +6,7 @@ weather application for fun
 
 This project is a starting point for a Flutter application.
 
-- [HERE IS THE ANDROID APK](https://drive.google.com/open?id=1cEtAnFlSdJ0TsBAJUotJRHW1X7-3r8vb)
+- [HERE IS THE ANDROID APK](https://drive.google.com/file/d/1lQMBbilKe4JxcgRVIei4z9BssTsviiMV/view?usp=sharing)
 
 For help getting started with Flutter, view our
 [online documentation](https://flutter.dev/docs), which offers tutorials,
